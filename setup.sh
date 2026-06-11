@@ -6,6 +6,16 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Installing Work Equipment SOP plugin..."
 
+# Check for openpyxl (required for Excel output)
+if ! python3 -c "import openpyxl" 2>/dev/null; then
+  echo ""
+  echo "  Installing openpyxl (required for Excel output)..."
+  pip3 install openpyxl --quiet && echo "  openpyxl installed." || echo "  Warning: could not install openpyxl. Run: pip3 install openpyxl"
+fi
+
+# Create output directory
+mkdir -p "$REPO_DIR/output"
+
 mkdir -p ~/.claude/commands
 
 _link() {

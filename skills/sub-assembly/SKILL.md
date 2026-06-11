@@ -155,3 +155,33 @@ Then tell the user:
 - Total rows in Sub-Assemblies tab
 - Number of assets that required a High-Level Breakdown
 - "When groupings are confirmed with the project supervisor, proceed to `/we-symptoms [wave-identifier]` for the Symptoms tab."
+
+---
+
+## Step 9 — Write to Excel
+
+Save each table and write both tabs into the wave's Excel workbook. Use the wave identifier from `$ARGUMENTS` in place of `[WAVE]`.
+
+**Sub-Assemblies tab:**
+1. Write the Sub-Assemblies CSV to `/tmp/we-[WAVE]-sub-assemblies.csv`
+2. Run:
+```bash
+python3 ~/Documents/projects/work-equipment-sop/scripts/write_tab.py \
+  --file ~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx \
+  --tab "Sub-Assemblies" \
+  --csv /tmp/we-[WAVE]-sub-assemblies.csv
+```
+
+**High-Level tab (only if a High-Level Breakdown was produced):**
+1. Write the High-Level CSV to `/tmp/we-[WAVE]-high-level.csv`
+2. Run:
+```bash
+python3 ~/Documents/projects/work-equipment-sop/scripts/write_tab.py \
+  --file ~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx \
+  --tab "High-Level" \
+  --csv /tmp/we-[WAVE]-high-level.csv
+```
+
+Report: "Written to `~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx` → **Sub-Assemblies** tab ([N] rows)[, **High-Level** tab ([N] rows)]."
+
+If `write_tab.py` returns an error about openpyxl not installed, tell the user to run: `pip3 install openpyxl`

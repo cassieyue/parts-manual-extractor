@@ -108,6 +108,24 @@ Then tell the user:
 
 ---
 
+## Step 6 — Write to Excel
+
+Save the CSV and write it into the wave's Excel workbook.
+
+1. Write the full CSV (header + all data rows) to `/tmp/we-[WAVE]-parts.csv`, replacing `[WAVE]` with the wave identifier from Step 2.
+2. Run:
+```bash
+python3 ~/Documents/projects/work-equipment-sop/scripts/write_tab.py \
+  --file ~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx \
+  --tab "Parts" \
+  --csv /tmp/we-[WAVE]-parts.csv
+```
+3. Report the result: "Written to `~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx` → **Parts** tab ([N] rows). Proceed with `/we-sub-assembly [WAVE]` to build the Sub-Assemblies and High-Level tabs."
+
+If `write_tab.py` returns an error about openpyxl not installed, tell the user to run: `pip3 install openpyxl`
+
+---
+
 ## Error handling
 
 - **Script not found**: Check that setup.sh was run. Path should be `~/Documents/projects/work-equipment-sop/scripts/process_pdf.py`.

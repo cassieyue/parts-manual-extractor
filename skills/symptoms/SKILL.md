@@ -81,4 +81,23 @@ Notes:
 After outputting, report:
 - Total symptom rows per asset
 - Any Name or Description fields that are at or near the character limit (≥ 28 chars for Name, ≥ 47 chars for Description) — flag these for user review
-- "Paste this into the **Wave X Symptoms** tab starting at column A."
+
+---
+
+## Step 6 — Write to Excel
+
+Save the CSV and write it into the wave's Excel workbook. Use the wave identifier from `$ARGUMENTS` in place of `[WAVE]`.
+
+1. Write the full Symptoms CSV (header + all data rows) to `/tmp/we-[WAVE]-symptoms.csv`
+2. Run:
+```bash
+python3 ~/Documents/projects/work-equipment-sop/scripts/write_tab.py \
+  --file ~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx \
+  --tab "Symptoms" \
+  --csv /tmp/we-[WAVE]-symptoms.csv
+```
+3. Report: "Written to `~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx` → **Symptoms** tab ([N] rows)."
+
+After all three skills have run, `~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx` will contain all four tabs — **Parts**, **Sub-Assemblies**, **High-Level**, and **Symptoms** — ready to open in Excel.
+
+If `write_tab.py` returns an error about openpyxl not installed, tell the user to run: `pip3 install openpyxl`
