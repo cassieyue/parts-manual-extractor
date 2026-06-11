@@ -67,9 +67,9 @@ After generating, count characters for every Name and Description and flag any v
 
 Produce the complete **Wave X Symptoms** table in a code fence.
 
-Columns (matching Wave 8 format exactly):
+Columns (matching Wave 8 format exactly, minus System Grouping):
 ```
-System Grouping, Asset Category, Manufacturer, Model, Symptoms, Symptom ID (20 CHAR), Symptom NAME (30 CHAR), Symptom Description (50 CHAR), [blank], count 30, count 50
+Asset Category, Manufacturer, Model, Symptoms, Symptom ID (20 CHAR), Symptom NAME (30 CHAR), Symptom Description (50 CHAR), [blank], count 30, count 50
 ```
 
 Notes:

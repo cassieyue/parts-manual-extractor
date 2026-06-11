@@ -17,17 +17,17 @@ Ask the user to provide the parts data. They can either:
 
 The expected columns are:
 ```
-System Grouping, Asset Category, Manufacturer, Model, Sub-Assembly #, Sub-Assembly, Item #, Part, Part #, Quantity, Manual Used
+Asset Category, Manufacturer, Model, Sub-Assembly #, Sub-Assembly, Item #, Part, Part #, Quantity, Manual Used
 ```
 
-Only columns A–F are needed for this workflow (System Grouping through Sub-Assembly). Confirm receipt before proceeding.
+Only columns A–E are needed for this workflow (Asset Category through Sub-Assembly). Confirm receipt before proceeding.
 
 ---
 
 ## Step 2 — Deduplicate sub-assemblies
 
 From the input data:
-1. Extract only the columns: **System Grouping, Asset Category, Manufacturer, Model, Sub-Assembly #, Sub-Assembly**
+1. Extract only the columns: **Asset Category, Manufacturer, Model, Sub-Assembly #, Sub-Assembly**
 2. Remove duplicate rows (same Sub-Assembly # + Asset Category = duplicate)
 3. Sort by: Asset Category → Sub-Assembly #
 
@@ -89,10 +89,10 @@ For assets that had a High-Level Breakdown, produce the **Wave X High-Level** ta
 
 Columns:
 ```
-System Grouping, Asset Category, Manufacturer, Model, High Level Code, Sub-Assembly (Grouped), [blank], [3-letter code]
+Asset Category, Manufacturer, Model, High Level Code, Sub-Assembly (Grouped), [blank], [3-letter code]
 ```
 
-Note: the last two columns match the Wave 8 pattern — column G is blank, column H is the 3-letter code.
+Note: the last two columns match the Wave 8 pattern — the second-to-last column is blank, the last column is the 3-letter code.
 
 Output as a comma-separated table in a code fence.
 
@@ -141,7 +141,7 @@ Produce two tables in code fences:
 ### Table 1: Wave X Sub-Assemblies tab
 Columns:
 ```
-System Grouping, Asset Category, Manufacturer, Model, High Level Code, Sub-Assembly #, Sub-Assembly, Repair Task ID, Repair Task Description
+Asset Category, Manufacturer, Model, High Level Code, Sub-Assembly #, Sub-Assembly, Repair Task ID, Repair Task Description
 ```
 - `High Level Code` — the numeric code (e.g., 1000) for assets with High-Level grouping; **blank** for assets without
 - All other fields from deduplication + generated IDs

@@ -29,11 +29,10 @@ Report back:
 Before transcribing, ask the user for the following (all required):
 
 1. **Wave Identifier** — the 3-letter code for this wave (e.g., `WER`, `WEH`, `WEF`). This is used to name the Excel output file.
-2. **System Grouping** — the broad category (e.g., `Track Production Equipment`, `Snow Equipment`, `Trailer`)
-3. **Asset Category** — the asset type in ALL CAPS (e.g., `UTILITY TRACK VEHICLE`)
-4. **Manufacturer** — in ALL CAPS (e.g., `HARSCO`)
-5. **Model** — the model number or name (e.g., `354AL`)
-6. **Manual Name** — the name of the manual as it should appear in the "Manual Used" column (e.g., `Harsco Utility Track Vehicle-UTV 354AL Parts Manual`)
+2. **Asset Category** — the asset type in ALL CAPS (e.g., `UTILITY TRACK VEHICLE`)
+3. **Manufacturer** — in ALL CAPS (e.g., `HARSCO`)
+4. **Model** — the model number or name (e.g., `354AL`)
+5. **Manual Name** — the name of the manual as it should appear in the "Manual Used" column (e.g., `Harsco Utility Track Vehicle-UTV 354AL Parts Manual`)
 
 ---
 
@@ -82,10 +81,10 @@ For each chunk (or the full PDF if no split was needed), read and transcribe the
 ### Output columns (in order)
 
 ```
-System Grouping | Asset Category | Manufacturer | Model | Sub-Assembly # | Sub-Assembly | Item # | Part | Part # | Quantity | Manual Used
+Asset Category | Manufacturer | Model | Sub-Assembly # | Sub-Assembly | Item # | Part | Part # | Quantity | Manual Used
 ```
 
-- `System Grouping`, `Asset Category`, `Manufacturer`, `Model` — repeat the values collected in Step 2 on every row.
+- `Asset Category`, `Manufacturer`, `Model` — repeat the values collected in Step 2 on every row.
 - `Sub-Assembly #`, `Sub-Assembly`, `Item #`, `Part`, `Part #`, `Quantity` — extracted from the manual page.
 - `Manual Used` — repeat the manual name collected in Step 2 on every row.
 
@@ -98,7 +97,7 @@ After transcribing each chunk, confirm the page range covered and ask: "Ready fo
 After all chunks are transcribed, output the complete table as a **comma-separated** block with a header row. Wrap the entire output in a code fence so it is easy to copy:
 
 ```
-System Grouping,Asset Category,Manufacturer,Model,Sub-Assembly #,Sub-Assembly,Item #,Part,Part #,Quantity,Manual Used
+Asset Category,Manufacturer,Model,Sub-Assembly #,Sub-Assembly,Item #,Part,Part #,Quantity,Manual Used
 [rows...]
 ```
 
