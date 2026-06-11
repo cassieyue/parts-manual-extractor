@@ -1,0 +1,8 @@
+{
+  "name": "work-equipment-sop",
+  "description": "Skills for the Work Equipment repair task database workflow — PDF transcription with auto-OCR and split, sub-assembly breakdown with Repair Task ID generation, and symptom classification with Symptom ID generation.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Cassia Yue"
+  }
+}
