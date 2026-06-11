@@ -5,7 +5,7 @@ description: Build the Wave X Sub-Assemblies and Wave X High-Level tabs from the
 
 Build the Sub-Assemblies and High-Level tabs for this wave.
 
-`$ARGUMENTS` should be the **wave identifier** (e.g., `WER` for Wave 8). If not provided, ask: "What is the 3-letter wave identifier for this wave? (e.g., WER, WEH)"
+Before starting, ask the user: **"What is the 3-letter wave identifier for this wave?"** — do not assume a value even if one was passed in `$ARGUMENTS`. Confirm it before proceeding.
 
 ---
 

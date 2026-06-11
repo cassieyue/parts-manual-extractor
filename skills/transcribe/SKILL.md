@@ -28,11 +28,12 @@ Report back:
 
 Before transcribing, ask the user for the following (all required):
 
-1. **System Grouping** — the broad category (e.g., `Track Production Equipment`, `Snow Equipment`, `Trailer`)
-2. **Asset Category** — the asset type in ALL CAPS (e.g., `UTILITY TRACK VEHICLE`)
-3. **Manufacturer** — in ALL CAPS (e.g., `HARSCO`)
-4. **Model** — the model number or name (e.g., `354AL`)
-5. **Manual Name** — the name of the manual as it should appear in the "Manual Used" column (e.g., `Harsco Utility Track Vehicle-UTV 354AL Parts Manual`)
+1. **Wave Identifier** — the 3-letter code for this wave (e.g., `WER`, `WEH`, `WEF`). This is used to name the Excel output file.
+2. **System Grouping** — the broad category (e.g., `Track Production Equipment`, `Snow Equipment`, `Trailer`)
+3. **Asset Category** — the asset type in ALL CAPS (e.g., `UTILITY TRACK VEHICLE`)
+4. **Manufacturer** — in ALL CAPS (e.g., `HARSCO`)
+5. **Model** — the model number or name (e.g., `354AL`)
+6. **Manual Name** — the name of the manual as it should appear in the "Manual Used" column (e.g., `Harsco Utility Track Vehicle-UTV 354AL Parts Manual`)
 
 ---
 
@@ -112,7 +113,7 @@ Then tell the user:
 
 Save the CSV and write it into the wave's Excel workbook.
 
-1. Write the full CSV (header + all data rows) to `/tmp/we-[WAVE]-parts.csv`, replacing `[WAVE]` with the wave identifier from Step 2.
+1. Write the full CSV (header + all data rows) to `/tmp/we-[WAVE]-parts.csv`, replacing `[WAVE]` with the Wave Identifier collected in Step 2.
 2. Run:
 ```bash
 python3 ~/Documents/projects/work-equipment-sop/scripts/write_tab.py \

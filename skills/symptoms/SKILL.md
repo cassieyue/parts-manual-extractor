@@ -5,7 +5,7 @@ description: Build the Wave X Symptoms tab from a service manual troubleshooting
 
 Build the Symptoms tab for this wave.
 
-`$ARGUMENTS` should be the **wave identifier** (3 letters, e.g., `WER`). If not provided, ask: "What is the 3-letter wave identifier for this wave?"
+Before starting, ask the user: **"What is the 3-letter wave identifier for this wave?"** — do not assume a value even if one was passed in `$ARGUMENTS`. Confirm it before proceeding.
 
 ---
 
