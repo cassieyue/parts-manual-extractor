@@ -1,6 +1,6 @@
 ---
 name: we-transcribe
-description: Transcribe a parts manual PDF into an Excel-ready parts table. Handles OCR for image-based PDFs and auto-splits manuals over 100 pages. Produces the full Wave X Parts tab format ready to paste into Excel.
+description: Transcribe a parts manual PDF into an Excel-ready parts table. Uses parallel subagents for large manuals (> 30 pages) and single-pass for small ones. Produces the full Wave X Parts tab.
 ---
 
 Transcribe the parts manual at `$ARGUMENTS` into the Wave X Parts tab format.
@@ -11,124 +11,145 @@ If no path is provided in `$ARGUMENTS`, ask the user: "What is the path to the p
 
 ## Step 1 — Analyze the PDF
 
-Run the analysis script to check page count and detect whether the PDF is image-based:
+Run the analysis script:
 
 ```bash
 python3 ~/Documents/projects/work-equipment-sop/scripts/process_pdf.py --analyze "$ARGUMENTS"
 ```
 
-Report back:
-- Total pages
-- Whether it is image-based (needs OCR) or text-based
-- Whether it needs splitting (> 100 pages)
+Report: total pages, image-based or text-based, which pipeline will be used.
 
 ---
 
 ## Step 2 — Collect asset metadata
 
-Before transcribing, ask the user for the following (all required):
+Ask the user for all five fields before proceeding:
 
-1. **Wave Identifier** — the 3-letter code for this wave (e.g., `WER`, `WEH`, `WEF`). This is used to name the Excel output file.
-2. **Asset Category** — the asset type in ALL CAPS (e.g., `UTILITY TRACK VEHICLE`)
-3. **Manufacturer** — in ALL CAPS (e.g., `HARSCO`)
-4. **Model** — the model number or name (e.g., `354AL`)
-5. **Manual Name** — the name of the manual as it should appear in the "Manual Used" column (e.g., `Harsco Utility Track Vehicle-UTV 354AL Parts Manual`)
-
----
-
-## Step 3 — Process the PDF (if needed)
-
-**If image-based OR needs splitting**, run the full processing script:
-
-```bash
-python3 ~/Documents/projects/work-equipment-sop/scripts/process_pdf.py "$ARGUMENTS"
-```
-
-This will:
-- For image-based PDFs: run OCR via pytesseract and save chunks as `.txt` files
-- For text-based PDFs > 100 pages: split into 100-page `.pdf` chunks
-- For text-based PDFs ≤ 100 pages: use the original file directly
-
-The script outputs a JSON result with `chunks` — a list of files with their paths and page ranges.
-
-**If text-based and ≤ 100 pages**, skip this step. Use the original PDF directly in Step 4.
+1. **Wave Identifier** — 3-letter code (e.g., `WER`)
+2. **Asset Category** — ALL CAPS (e.g., `UTILITY TRACK VEHICLE`)
+3. **Manufacturer** — ALL CAPS (e.g., `HARSCO`)
+4. **Model** — (e.g., `354AL`)
+5. **Manual Name** — as it appears in the "Manual Used" column
 
 ---
 
-## Step 4 — Transcribe each chunk
+## Step 3 — Determine extraction strategy
 
-For each chunk (or the full PDF if no split was needed), read and transcribe the content.
-
-### Reading rules
-
-**Text-based PDF chunks** — use the Read tool with the `pages` parameter in batches of up to 20 pages:
-- Chunk covering pages 1–100: read pages 1–20, then 21–40, etc.
-- Always read the full chunk before moving to the next one.
-
-**OCR text file chunks** — use the Read tool to read the `.txt` file directly. The file contains page boundaries marked as `--- PAGE N ---`.
-
-### Transcription rules (apply exactly)
-
-- **Each page = one sub-assembly.** Extract the Sub-Assembly # and Sub-Assembly Name from the top of the page and apply them to every row on that page.
-- **ALL CAPS** on all text fields.
-- **No commas** anywhere in the output.
-- **Leave blank** if a value is unknown — never invent or assume data.
-- **Multi-line descriptions** → merge into one line (no commas).
-- **If a page has no clear sub-assembly header** → ask before outputting, do not guess.
-- **Identical sub-assemblies** (e.g., GEAR BOX ASSEMBLY FRONT and GEAR BOX ASSEMBLY REAR appearing on the same page) → separate rows, same sub-assembly header.
-- **Build a single continuous table** — do not restart the row count between pages.
-
-### Output columns (in order)
-
-```
-Asset Category | Manufacturer | Model | Sub-Assembly # | Sub-Assembly | Item # | Part | Part # | Quantity | Manual Used
-```
-
-- `Asset Category`, `Manufacturer`, `Model` — repeat the values collected in Step 2 on every row.
-- `Sub-Assembly #`, `Sub-Assembly`, `Item #`, `Part`, `Part #`, `Quantity` — extracted from the manual page.
-- `Manual Used` — repeat the manual name collected in Step 2 on every row.
-
-After transcribing each chunk, confirm the page range covered and ask: "Ready for the next chunk?" before proceeding.
+- **≤ 30 pages** → single-pass (Step 4a)
+- **> 30 pages** → parallel subagents (Step 4b)
 
 ---
 
-## Step 5 — Output
+## Step 4a — Single-pass extraction (≤ 30 pages)
 
-After all chunks are transcribed, output the complete table as a **comma-separated** block with a header row. Wrap the entire output in a code fence so it is easy to copy:
+Read the entire PDF using the Read tool (use `pages="1-N"` with the full page count). Apply the transcription rules below and build the full row list. Proceed directly to Step 5.
+
+**Transcription rules:**
+- Skip diagram pages, cover, TOC, legend pages — output no rows for those
+- Each parts-table page has a Sub-Assembly # and Name in the header — apply to every row on that page
+- Continuation pages with no header: carry the sub-assembly from the previous page
+- Two-column layout: extract ALL items from BOTH columns
+- ALL CAPS on all text fields; NO commas anywhere; leave blank if unknown
+- Multi-line descriptions → merge into one line
+- Sub-rows sharing one item number: output each as a separate row, same item number
+
+---
+
+## Step 4b — Parallel subagent extraction (> 30 pages)
+
+Compute sections: split total pages into groups of 20 pages each.
+
+Example for 189 pages → 10 sections: 1–20, 21–40, 41–60, 61–80, 81–100, 101–120, 121–140, 141–160, 161–180, 181–189.
+
+**Launch all agents in a single message** so they run concurrently. For each section, use the Agent tool with the prompt below, substituting FIRST_PAGE, LAST_PAGE, and PDF_PATH with the actual values.
+
+### Subagent prompt
+
+```
+You are a parts-manual extraction agent. Read pages FIRST_PAGE through LAST_PAGE of this PDF and extract all parts table rows.
+
+PDF path: PDF_PATH
+
+Use the Read tool with pages="FIRST_PAGE-LAST_PAGE". If the range is more than 20 pages, make two Read calls (e.g. pages="FIRST_PAGE-MID" then pages="MID+1-LAST_PAGE").
+
+TRANSCRIPTION RULES:
+- Skip diagram pages, cover pages, TOC, legend pages — no rows for those
+- Each parts-table page has a Sub-Assembly # and Name in the header — apply to every row on that page
+- Continuation page with no sub-assembly header: leave subassembly_num and subassembly as "" — the caller will fill them
+- Two-column layout: extract ALL items from BOTH columns (left first, then right)
+- ALL CAPS on all text fields; NO commas in any field; leave blank ("") if value is unknown
+- Multi-line descriptions: merge into one line, no commas
+- Sub-rows sharing one item number: one row per part, same item_num on each
+
+OUTPUT:
+Return ONLY a raw JSON object — no explanation, no markdown, no code fences. Any non-JSON text will break parsing.
+
+{
+  "rows": [
+    {
+      "subassembly_num": "D6077WAA",
+      "subassembly": "DRIVE TRAIN ASSEMBLY",
+      "item_num": "1",
+      "part": "TRANSMISSION CLARK",
+      "part_num": "0-3523010-0-08",
+      "quantity": "1",
+      "page_num": "7"
+    }
+  ],
+  "last_subassembly_num": "D6077WAA",
+  "last_subassembly": "DRIVE TRAIN ASSEMBLY"
+}
+
+- rows: all extracted rows in page order; empty array if no parts pages found
+- last_subassembly_num / last_subassembly: the sub-assembly active on the last page of your range; empty string if no parts pages found
+```
+
+### Assembly (after all agents complete)
+
+1. Sort agent results by section order (section 1 first).
+2. **Sub-assembly carry**: walk all rows in order. When a row has empty `subassembly_num` and `subassembly`, fill them with the last non-empty values seen. When starting a new section, seed carry state with that section's `last_subassembly_num` / `last_subassembly` before processing its rows.
+3. Log rows per section and note any sections that returned 0 rows (expected for all-diagram sections).
+
+---
+
+## Step 5 — Write CSV and report
+
+Build the output table with these columns:
 
 ```
 Asset Category,Manufacturer,Model,Sub-Assembly #,Sub-Assembly,Item #,Part,Part #,Quantity,Manual Used
-[rows...]
 ```
 
-Then tell the user:
-- How many rows were produced
-- How many unique sub-assemblies were found
-- "Paste this into the **Wave X Parts** tab starting at column A. Then proceed with `/we-sub-assembly [wave-identifier]` to build the Sub-Assemblies and High-Level tabs."
+- `Asset Category`, `Manufacturer`, `Model`, `Manual Used` — from Step 2 metadata, repeated on every row
+- All other columns — from extracted rows
+
+Write to `/tmp/we-[WAVE]-parts.csv`.
+
+Report:
+- Total rows extracted
+- Unique sub-assemblies found
+- Number of sections / pages skipped (diagram/non-data)
 
 ---
 
 ## Step 6 — Write to Excel
 
-Save the CSV and write it into the wave's Excel workbook.
-
-1. Write the full CSV (header + all data rows) to `/tmp/we-[WAVE]-parts.csv`, replacing `[WAVE]` with the Wave Identifier collected in Step 2.
-2. Run:
 ```bash
 python3 ~/Documents/projects/work-equipment-sop/scripts/write_tab.py \
   --file ~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx \
   --tab "Parts" \
   --csv /tmp/we-[WAVE]-parts.csv
 ```
-3. Report the result: "Written to `~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx` → **Parts** tab ([N] rows). Proceed with `/we-sub-assembly [WAVE]` to build the Sub-Assemblies and High-Level tabs."
 
-If `write_tab.py` returns an error about openpyxl not installed, tell the user to run: `pip3 install openpyxl`
+Report: "Written to `~/Documents/projects/work-equipment-sop/output/[WAVE].xlsx` → **Parts** tab ([N] rows). Proceed with `/we-sub-assembly [WAVE]` to build the Sub-Assemblies and High-Level tabs."
+
+If `write_tab.py` errors on openpyxl: `pip3 install openpyxl`.
 
 ---
 
 ## Error handling
 
-- **Script not found**: Check that setup.sh was run. Path should be `~/Documents/projects/work-equipment-sop/scripts/process_pdf.py`.
-- **PDF not found**: Report the path and ask the user to verify it.
-- **OCR quality issues**: If a page produces garbled output (likely a low-quality scan), flag it and ask the user to verify that section manually against the original.
-- **Page with no sub-assembly header**: Stop and ask rather than guessing — accuracy is critical for Trapeze upload.
+- **PDF not found**: report path, ask user to verify
+- **Subagent returns malformed or non-JSON response**: try to extract JSON from the response by stripping markdown fences; if still unparseable, log section as 0 rows and note it in the final report for manual review
+- **Continuation page with no prior sub-assembly context** (first section of manual starts mid-table): flag those rows in the report — do not guess
+- **Diagram-heavy sections returning 0 rows**: expected; log and continue
