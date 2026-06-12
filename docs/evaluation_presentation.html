@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Parts Extraction — Evaluation</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3249;
+    --accent: #6c8bff;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --card: #1e2235;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .deck { width: 100%; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 64px 88px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateX(32px);
+    overflow: hidden;
+  }
+  .slide.active  { opacity: 1; pointer-events: all; transform: translateX(0); }
+  .slide.exit    { opacity: 0; transform: translateX(-32px); }
+
+  /* NAV */
+  .nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    z-index: 100;
+    background: rgba(26,29,39,0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 10px 22px;
+  }
+  .nav button {
+    background: none; border: none; color: var(--muted);
+    font-size: 17px; cursor: pointer; padding: 4px 10px;
+    border-radius: 6px; transition: color 0.2s, background 0.2s;
+  }
+  .nav button:hover { color: var(--text); background: var(--surface2); }
+  .nav button:disabled { opacity: 0.2; cursor: default; }
+  .nav button:disabled:hover { color: var(--muted); background: none; }
+  .slide-counter { font-size: 11px; color: var(--muted); min-width: 52px; text-align: center; letter-spacing: 0.06em; }
+  .progress-dots { display: flex; gap: 5px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); transition: all 0.2s; cursor: pointer; }
+  .dot.active  { background: var(--accent); transform: scale(1.5); }
+  .dot.visited { background: var(--muted); }
+
+  /* TYPE */
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin-bottom: 16px;
+  }
+  h1 { font-size: 56px; font-weight: 700; line-height: 1.08; letter-spacing: -0.025em; }
+  h2 { font-size: 40px; font-weight: 700; line-height: 1.12; letter-spacing: -0.02em; }
+  .lead { font-size: 18px; color: var(--muted); line-height: 1.6; margin-top: 16px; max-width: 640px; }
+  p  { color: var(--muted); line-height: 1.65; font-size: 15px; }
+
+  .spacer { flex: 1; }
+  .mt8  { margin-top: 8px; }
+  .mt16 { margin-top: 16px; }
+  .mt24 { margin-top: 24px; }
+  .mt32 { margin-top: 32px; }
+  .mt40 { margin-top: 40px; }
+
+  /* CARDS */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px 30px;
+  }
+  .card.green { border-color: var(--green); }
+  .card.yellow { border-color: var(--yellow); }
+  .card.blue  { border-color: var(--accent); }
+
+  /* GRIDS */
+  .cols   { display: grid; gap: 24px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* METRICS */
+  .stat-val   { font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+  .stat-label { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+
+  .divider { width: 1px; background: var(--border); align-self: stretch; }
+
+  /* LIST */
+  ul.clean { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  ul.clean li { font-size: 15px; color: var(--muted); padding-left: 22px; position: relative; line-height: 1.55; }
+  ul.clean li::before { content: '→'; position: absolute; left: 0; color: var(--accent); font-size: 12px; top: 2px; }
+  ul.clean li strong { color: var(--text); font-weight: 600; }
+
+  /* CHIP */
+  .chip {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; padding: 4px 12px; border-radius: 20px; text-transform: uppercase;
+  }
+  .chip-green  { background: rgba(52,211,153,0.12); color: var(--green); }
+  .chip-yellow { background: rgba(251,191,36,0.12);  color: var(--yellow); }
+  .chip-red    { background: rgba(248,113,113,0.12); color: var(--red); }
+  .chip-blue   { background: rgba(108,139,255,0.12); color: var(--accent); }
+
+  /* CALLOUT */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: rgba(108,139,255,0.06);
+    border-radius: 0 10px 10px 0;
+    padding: 16px 22px;
+    font-size: 15px; color: var(--text); line-height: 1.65; font-style: italic;
+  }
+
+  /* HIGHLIGHT BOX */
+  .hbox {
+    background: rgba(108,139,255,0.07); border: 1px solid rgba(108,139,255,0.25);
+    border-radius: 14px; padding: 24px 28px;
+  }
+  .gbox {
+    background: rgba(52,211,153,0.07); border: 1px solid rgba(52,211,153,0.25);
+    border-radius: 14px; padding: 24px 28px;
+  }
+
+  /* APPROACH LABEL */
+  .approach-tag {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 16px;
+    font-size: 12px; color: var(--muted); margin-bottom: 22px;
+  }
+
+  /* TIMELINE */
+  .timeline { display: flex; align-items: flex-start; gap: 0; margin-top: 10px; }
+  .t-step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+  .t-step:not(:last-child)::after {
+    content: ''; position: absolute; top: 21px; left: 50%;
+    width: 100%; height: 2px; background: var(--border); opacity: 0.5;
+  }
+  .t-node {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--muted);
+    background: var(--surface); position: relative; z-index: 1; flex-shrink: 0;
+  }
+  .t-node.on { border-color: var(--accent); color: var(--accent); background: rgba(108,139,255,0.1); box-shadow: 0 0 18px rgba(108,139,255,0.25); }
+  .t-body    { margin-top: 14px; text-align: center; padding: 0 6px; }
+  .t-title   { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .t-sub     { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+  /* TABLE */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .tbl th {
+    text-align: left; padding: 9px 14px;
+    color: var(--muted); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .tbl td { padding: 10px 14px; color: var(--text); border-bottom: 1px solid rgba(46,50,73,0.45); vertical-align: top; line-height: 1.45; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr.hl td { background: rgba(108,139,255,0.05); }
+
+  /* SLIDE BACKGROUNDS */
+  .bg-title { background: radial-gradient(ellipse at 70% 20%, rgba(108,139,255,0.14) 0%, transparent 55%), var(--bg); }
+  .bg-green { background: radial-gradient(ellipse at 30% 60%, rgba(52,211,153,0.08) 0%, transparent 55%), var(--bg); }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · TITLE -->
+  <div class="slide bg-title active" data-index="0">
+    <div class="spacer"></div>
+    <div class="eyebrow">AI Automation Evaluation · Work Equipment SOP</div>
+    <h1>Can AI replace manual<br>parts transcription?</h1>
+    <p class="lead">
+      A maintenance team spends hours copying parts data from scanned equipment manuals into spreadsheets.
+      This is the story of how five different AI approaches tackled that problem — and what finally worked.
+    </p>
+    <div class="spacer"></div>
+    <div style="display:flex; gap:48px; align-items:center; padding-bottom:8px">
+      <div>
+        <div class="stat-val" style="color:var(--accent)">189</div>
+        <div class="stat-label">pages in a single manual</div>
+      </div>
+      <div class="divider"></div>
+      <div>
+        <div class="stat-val" style="color:var(--yellow)">2–4 hrs</div>
+        <div class="stat-label">manual effort per 100 pages</div>
+      </div>
+      <div class="divider"></div>
+      <div>
+        <div class="stat-val" style="color:var(--green)">~4 min</div>
+        <div class="stat-label">with the final AI approach</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- 2 · THE PROBLEM -->
+  <div class="slide" data-index="1">
+    <div class="eyebrow">The Problem</div>
+    <h2>A tedious, high-stakes<br>data entry task</h2>
+    <p class="lead">Railway maintenance teams receive scanned equipment manuals as image-only PDFs. Every part on every page must be entered into a maintenance management system — by hand.</p>
+
+    <div class="cols cols-2 mt40" style="gap:28px">
+      <div class="card yellow">
+        <div style="font-size:13px; font-weight:700; color:var(--yellow); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.08em">Current State</div>
+        <ul class="clean">
+          <li>Operator opens manual, opens spreadsheet, types each row one by one</li>
+          <li><strong>2–4 hours</strong> per 100 pages of manual</li>
+          <li>Typos in part numbers cause ordering errors downstream</li>
+          <li>Any part missed means a gap in the maintenance system</li>
+        </ul>
+      </div>
+      <div class="card blue">
+        <div style="font-size:13px; font-weight:700; color:var(--accent); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.08em">What We Want</div>
+        <ul class="clean">
+          <li>Upload a PDF, get a structured spreadsheet back</li>
+          <li>Every part captured accurately, every time</li>
+          <li>Operator role shifts from <strong>data entry</strong> to <strong>review and sign-off</strong></li>
+          <li>Repeatable across any equipment manual in the fleet</li>
+        </ul>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- 3 · WHY IT'S HARD -->
+  <div class="slide" data-index="2">
+    <div class="eyebrow">Why It's Not Simple</div>
+    <h2>Scanned manuals are harder<br>to read than they look</h2>
+    <p class="lead">Standard document tools struggle with these files. Three structural problems make automated extraction difficult.</p>
+
+    <div class="cols cols-3 mt40" style="gap:20px">
+      <div class="card">
+        <div style="font-size:32px; margin-bottom:12px">⊞</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px">Two columns per page</div>
+        <p style="font-size:14px">Parts tables are split into left and right columns. Text-reading software reads top-to-bottom and mixes the two columns together — producing garbled output that's difficult to untangle.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:32px; margin-bottom:12px">◧</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px">Most pages have no data</div>
+        <p style="font-size:14px">Roughly 80% of pages are full-page diagrams with no parts data. Any approach must reliably skip these without accidentally missing real data pages.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:32px; margin-bottom:12px">🔤</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px">Part numbers corrupt easily</div>
+        <p style="font-size:14px">Industrial part numbers like <span style="font-family:monospace; font-size:13px; color:var(--accent)">0-3582001-0-18</span> are fragile. Standard text-recognition software confuses O/0 and l/1 constantly — enough to make a part number unrecognizable.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="callout">
+      The two-column layout turned out to be the decisive problem. Any approach that reads text linearly — without understanding the visual layout — fails here.
+    </div>
+  </div>
+
+  <!-- 4 · EVOLUTION OVERVIEW -->
+  <div class="slide" data-index="3">
+    <div class="eyebrow">Five Approaches</div>
+    <h2>The path to a working solution</h2>
+    <p class="lead">Each approach addressed the failures of the one before it. The key shift: moving from text-processing tools to AI that actually sees the page.</p>
+
+    <div class="timeline mt40">
+      <div class="t-step">
+        <div class="t-node">B</div>
+        <div class="t-body">
+          <div class="t-title">Baseline</div>
+          <div class="t-sub">Manual entry<br><span style="color:var(--yellow)">2–4 hrs/100 pg</span></div>
+        </div>
+      </div>
+      <div class="t-step">
+        <div class="t-node">1</div>
+        <div class="t-body">
+          <div class="t-title">Text Recognition</div>
+          <div class="t-sub">Software-based OCR<br><span style="color:var(--red)">~87% accurate</span></div>
+        </div>
+      </div>
+      <div class="t-step">
+        <div class="t-node">2</div>
+        <div class="t-body">
+          <div class="t-title">AI Image Reading</div>
+          <div class="t-sub">AI reads page images<br><span style="color:var(--yellow)">77–100%</span></div>
+        </div>
+      </div>
+      <div class="t-step">
+        <div class="t-node">3</div>
+        <div class="t-body">
+          <div class="t-title">Human + AI</div>
+          <div class="t-sub">Operator-guided AI<br><span style="color:var(--yellow)">~92% + review</span></div>
+        </div>
+      </div>
+      <div class="t-step">
+        <div class="t-node">4</div>
+        <div class="t-body">
+          <div class="t-title">AI App (base44)</div>
+          <div class="t-sub">Structured extraction<br><span style="color:var(--green)">100%</span></div>
+        </div>
+      </div>
+      <div class="t-step">
+        <div class="t-node on">5</div>
+        <div class="t-body">
+          <div class="t-title" style="color:var(--accent)">AI Plugin</div>
+          <div class="t-sub">Built in-house<br><span style="color:var(--green)">100% · ~4 min</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cols cols-3 mt32" style="gap:16px">
+      <div class="hbox" style="border-color:rgba(248,113,113,0.3); background:rgba(248,113,113,0.06)">
+        <div class="chip chip-red" style="margin-bottom:10px">Approaches 1–2 failed</div>
+        <p style="font-size:13px">Neither could handle the two-column layout reliably. Too many rows dropped or mixed up.</p>
+      </div>
+      <div class="hbox" style="border-color:rgba(251,191,36,0.3); background:rgba(251,191,36,0.06)">
+        <div class="chip chip-yellow" style="margin-bottom:10px">Approach 3 works — with limits</div>
+        <p style="font-size:13px">Good accuracy, but still requires an operator to run it manually. Doesn't scale.</p>
+      </div>
+      <div class="gbox">
+        <div class="chip chip-green" style="margin-bottom:10px">Approaches 4–5 break through</div>
+        <p style="font-size:13px">100% accuracy in controlled testing. Approach 5 adds speed and removes the subscription cost.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- 5 · APPROACHES 1–3 -->
+  <div class="slide" data-index="4">
+    <div class="eyebrow">Approaches 1 – 3</div>
+    <h2>Three attempts before<br>the real breakthrough</h2>
+
+    <div class="cols cols-3 mt32" style="gap:20px">
+      <div class="card">
+        <div class="chip chip-red" style="margin-bottom:14px">Approach 1</div>
+        <div style="font-size:17px; font-weight:700; color:var(--text); margin-bottom:10px">Text Recognition Software</div>
+        <p style="font-size:14px; margin-bottom:14px">Automatically converts the scanned pages to text, then uses AI to organize it. Fast and cheap — but the two-column layout breaks the output.</p>
+        <div style="padding-top:14px; border-top:1px solid var(--border)">
+          <div style="font-size:13px; color:var(--red); font-weight:600">~87% accuracy</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:4px">Too many errors for safe use without full re-check</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chip chip-yellow" style="margin-bottom:14px">Approach 2</div>
+        <div style="font-size:17px; font-weight:700; color:var(--text); margin-bottom:10px">AI Image Reading</div>
+        <p style="font-size:14px; margin-bottom:14px">Converts pages to images and has AI read them visually — like a human would. Much better at handling the two-column layout. But dense pages still trip it up.</p>
+        <div style="padding-top:14px; border-top:1px solid var(--border)">
+          <div style="font-size:13px; color:var(--yellow); font-weight:600">77–100% depending on page</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:4px">Inconsistent; dense pages drop ~23% of rows</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chip chip-yellow" style="margin-bottom:14px">Approach 3 — Current</div>
+        <div style="font-size:17px; font-weight:700; color:var(--text); margin-bottom:10px">Operator + AI (Claude web)</div>
+        <p style="font-size:14px; margin-bottom:14px">Operator uploads the PDF to Claude's web interface and prompts it to extract. The human reviews the output and catches errors. Works well — but each manual still needs someone sitting there.</p>
+        <div style="padding-top:14px; border-top:1px solid var(--border)">
+          <div style="font-size:13px; color:var(--yellow); font-weight:600">~92% + light review</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:4px">15–30 min per 100 pages. Doesn't scale with volume.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="callout">
+      Approach 3 is what the team uses today. It's a meaningful improvement over pure manual entry — but it's still gated on operator availability and can't be parallelized.
+    </div>
+  </div>
+
+  <!-- 6 · BREAKTHROUGH -->
+  <div class="slide" data-index="5">
+    <div class="eyebrow">The Breakthrough</div>
+    <h2>Two things changed everything</h2>
+
+    <div class="cols cols-2 mt36" style="gap:28px; margin-top:36px">
+      <div class="card blue">
+        <div style="font-size:13px; font-weight:700; color:var(--accent); margin-bottom:16px; text-transform:uppercase; letter-spacing:0.08em">1 · Structured output format</div>
+        <div style="font-size:19px; font-weight:700; color:var(--text); margin-bottom:12px">Tell the AI exactly what shape the answer must take</div>
+        <p style="font-size:14px">Earlier approaches let the AI produce free-form output — sometimes a table, sometimes prose, sometimes missing rows entirely with no warning.</p>
+        <p style="font-size:14px; margin-top:10px">The breakthrough was defining a strict output format upfront. Now if the AI produces something that doesn't match, the system flags it immediately rather than silently accepting a bad result.</p>
+        <div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--border); font-size:13px; color:var(--green); font-weight:600">Errors become visible — not invisible</div>
+      </div>
+      <div class="card green">
+        <div style="font-size:13px; font-weight:700; color:var(--green); margin-bottom:16px; text-transform:uppercase; letter-spacing:0.08em">2 · AI reads the PDF natively</div>
+        <div style="font-size:19px; font-weight:700; color:var(--text); margin-bottom:12px">No conversion step — AI sees the page like a human does</div>
+        <p style="font-size:14px">Instead of converting to images or text first, the AI reads the PDF directly — understanding layout, column structure, and which pages are diagrams vs. data.</p>
+        <p style="font-size:14px; margin-top:10px">This is what eliminates the two-column problem. The AI sees the full visual layout and extracts left and right columns correctly without any special configuration.</p>
+        <div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--border); font-size:13px; color:var(--green); font-weight:600">Two-column layout handled automatically</div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="callout">
+      Both Approach 4 (third-party app) and Approach 5 (built in-house) use these same two principles. They achieve identical accuracy — the difference is how they're deployed.
+    </div>
+  </div>
+
+  <!-- 7 · APPROACH 5 RESULTS -->
+  <div class="slide bg-green" data-index="6">
+    <div class="eyebrow">Approach 5 — Final Solution</div>
+    <h2>Full manual. One click.<br>Four minutes.</h2>
+    <p class="lead">An in-house AI plugin built on Claude Code. No third-party subscription. No operator sitting through the extraction. Just upload and review.</p>
+
+    <div class="cols cols-3 mt40" style="gap:20px">
+      <div class="card green">
+        <div class="stat-val" style="color:var(--green)">1,736</div>
+        <div class="stat-label">parts rows extracted from the<br>full 189-page Harsco UTV manual</div>
+      </div>
+      <div class="card green">
+        <div class="stat-val" style="color:var(--green)">~4 min</div>
+        <div class="stat-label">wall-clock time for the complete<br>extraction (was 2–4 hours)</div>
+      </div>
+      <div class="card green">
+        <div class="stat-val" style="color:var(--green)">100%</div>
+        <div class="stat-label">row capture rate on the<br>controlled validation test</div>
+      </div>
+    </div>
+
+    <div class="cols cols-2 mt24" style="gap:20px">
+      <div class="card">
+        <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:10px">How it achieves the speed</div>
+        <p style="font-size:14px">The plugin splits the 189-page manual into 10 sections and reads all 10 simultaneously — like having ten people read different chapters of the same book at the same time. Each section finishes in about 3–4 minutes; the whole manual is done when the slowest section finishes.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:10px">What the operator does</div>
+        <p style="font-size:14px">Run one command. The plugin handles extraction, filters out diagram pages automatically, and writes the result directly to Excel. The operator's job is to review the output — not produce it. Estimated review time: 10–15 minutes per manual.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- 8 · COMPARISON -->
+  <div class="slide" data-index="7">
+    <div class="eyebrow">Side by Side</div>
+    <h2>How the approaches compare</h2>
+
+    <div class="mt32" style="overflow:auto; flex:1">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Approach</th>
+            <th>Accuracy</th>
+            <th>Time per manual</th>
+            <th>Operator effort</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Baseline</strong><br><span style="font-size:12px; color:var(--muted)">Manual entry</span></td>
+            <td><span style="color:var(--green)">High</span></td>
+            <td><span style="color:var(--red)">2–4 hrs</span></td>
+            <td>Full session</td>
+            <td>Labour only</td>
+          </tr>
+          <tr>
+            <td><strong>Approach 1</strong><br><span style="font-size:12px; color:var(--muted)">Text recognition</span></td>
+            <td><span style="color:var(--red)">~87%</span></td>
+            <td><span style="color:var(--green)">Minutes</span></td>
+            <td>Heavy re-check</td>
+            <td>Low</td>
+          </tr>
+          <tr>
+            <td><strong>Approach 2</strong><br><span style="font-size:12px; color:var(--muted)">AI image reading</span></td>
+            <td><span style="color:var(--yellow)">77–100%</span></td>
+            <td><span style="color:var(--green)">5–10 min</span></td>
+            <td>Review required</td>
+            <td>~$2.56/manual</td>
+          </tr>
+          <tr>
+            <td><strong>Approach 3</strong><br><span style="font-size:12px; color:var(--muted)">Operator + AI (current)</span></td>
+            <td><span style="color:var(--yellow)">~92%</span></td>
+            <td><span style="color:var(--yellow)">15–30 min</span></td>
+            <td>Moderate</td>
+            <td>Claude subscription + Adobe</td>
+          </tr>
+          <tr>
+            <td><strong>Approach 4</strong><br><span style="font-size:12px; color:var(--muted)">AI app (base44)</span></td>
+            <td><span style="color:var(--green)">100%</span></td>
+            <td><span style="color:var(--green)">~3 min</span></td>
+            <td>Light review</td>
+            <td>base44 subscription</td>
+          </tr>
+          <tr class="hl">
+            <td><strong style="color:var(--accent)">Approach 5</strong><br><span style="font-size:12px; color:var(--muted)">In-house AI plugin</span></td>
+            <td><span style="color:var(--green)">100%</span></td>
+            <td><span style="color:var(--green)">~4 min</span></td>
+            <td>Light review</td>
+            <td style="color:var(--green)">No additional cost</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout mt24">
+      Approaches 4 and 5 are equal in accuracy and speed. Approach 5 removes the third-party dependency and subscription cost — and gives the team full control over future improvements.
+    </div>
+  </div>
+
+  <!-- 9 · LEARNINGS -->
+  <div class="slide" data-index="8">
+    <div class="eyebrow">Key Learnings</div>
+    <h2>What this project taught us<br>about AI and messy data</h2>
+
+    <div class="cols cols-2 mt32" style="gap:20px">
+      <div class="card">
+        <div style="font-size:22px; margin-bottom:10px">👁</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px">AI needs to see the layout, not just the text</div>
+        <p style="font-size:14px">The moment we stopped trying to convert the document into text first — and let the AI read it like a human would — accuracy jumped dramatically. Layout context is not optional for this type of document.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:22px; margin-bottom:10px">📋</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px">Define the output format before you start</div>
+        <p style="font-size:14px">When the AI produces free-form output, errors are silent — a missing row looks the same as a row that was never there. A strict output format makes failures explicit and reviewable rather than invisible.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:22px; margin-bottom:10px">⚡</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px">Parallelism is the speed lever</div>
+        <p style="font-size:14px">Running ten sections simultaneously compressed the extraction time from ~40 minutes (sequential) to ~4 minutes. For high-volume work, this is the difference between a tool the team actually uses and one they avoid.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:22px; margin-bottom:10px">🧑‍💼</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px">The human role shifts, not disappears</div>
+        <p style="font-size:14px">Every approach that tried to remove the human entirely fell short. The better framing: AI handles extraction, human handles sign-off. That's a role the operator can do in 10–15 minutes instead of 2–4 hours.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- 10 · AI FOR UNSTRUCTURED DATA -->
+  <div class="slide" data-index="9">
+    <div class="eyebrow">Broader Takeaway</div>
+    <h2>When does AI actually help<br>with messy, unstructured data?</h2>
+    <p class="lead">This project is a good case study for a common question: when a document has structure that a human can clearly see, but no tool can reliably parse — where does AI fit?</p>
+
+    <div class="cols cols-2 mt32" style="gap:24px">
+      <div>
+        <div class="gbox" style="margin-bottom:16px">
+          <div style="font-size:14px; font-weight:700; color:var(--green); margin-bottom:12px">AI works well when…</div>
+          <ul class="clean">
+            <li>The document has a <strong>visual structure</strong> a human can recognize (tables, columns, sections)</li>
+            <li>The content is <strong>repetitive and predictable</strong> — same format across many pages</li>
+            <li>An occasional error is <strong>catchable in review</strong> — a human spot-check is viable</li>
+            <li>The goal is to <strong>shift human effort</strong> from production to review, not eliminate it</li>
+          </ul>
+        </div>
+        <div class="card" style="border-color:rgba(248,113,113,0.3); background:rgba(248,113,113,0.04)">
+          <div style="font-size:14px; font-weight:700; color:var(--red); margin-bottom:12px">AI struggles when…</div>
+          <ul class="clean">
+            <li>You need <strong>100% guaranteed completeness</strong> with no human check whatsoever</li>
+            <li>The document format is <strong>highly variable</strong> across instances (AI tuned for one format breaks on another)</li>
+            <li>Errors have <strong>high downstream cost</strong> and there's no practical review step</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="height:100%">
+          <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px">The right question to ask</div>
+          <div class="callout" style="margin-bottom:16px">
+            "What is the smallest human touch that makes AI output trustworthy enough to use?"
+          </div>
+          <p style="font-size:14px">For this project: an operator reviews a flagged summary — not the whole PDF. That 10–15 minute review step is what makes a 100%-accurate result reliable in practice.</p>
+          <p style="font-size:14px; margin-top:12px">The answer to that question is different for every workflow. Finding it is the real design challenge — not building the AI model.</p>
+        </div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- 11 · RECOMMENDATION -->
+  <div class="slide bg-green" data-index="10">
+    <div class="eyebrow">Recommendation</div>
+    <h2>What to do next</h2>
+
+    <div class="cols cols-3 mt36" style="margin-top:36px; gap:20px">
+      <div class="card green">
+        <div style="font-size:13px; font-weight:700; color:var(--green); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.08em">Immediate</div>
+        <div style="font-size:17px; font-weight:700; color:var(--text); margin-bottom:10px">Adopt Approach 5 for new waves</div>
+        <p style="font-size:14px">The in-house plugin is ready. For any team already using Claude Code, extraction is one command — no new tools, no subscriptions, no workflow changes for the reviewer.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.08em">If browser UI is preferred</div>
+        <div style="font-size:17px; font-weight:700; color:var(--text); margin-bottom:10px">Use base44 (Approach 4)</div>
+        <p style="font-size:14px">Same accuracy. The web interface lets reviewers edit the table before exporting. Good choice if the operator isn't comfortable with a command-line tool.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:13px; font-weight:700; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.08em">Validation needed</div>
+        <div style="font-size:17px; font-weight:700; color:var(--text); margin-bottom:10px">Run a full-manual accuracy check</div>
+        <p style="font-size:14px">The 100% figure comes from a 14-page controlled test. A full-manual ground-truth check (compare output to a manually verified copy) would confirm the result at scale before org-wide rollout.</p>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="hbox" style="margin-top:8px">
+      <div style="display:flex; gap:48px; align-items:center">
+        <div>
+          <div style="font-size:11px; color:var(--accent); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px">Time saved per manual</div>
+          <div style="font-size:28px; font-weight:800; color:var(--text)">~2–4 hours → ~15 minutes</div>
+        </div>
+        <div class="divider"></div>
+        <div>
+          <div style="font-size:11px; color:var(--accent); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px">Operator role</div>
+          <div style="font-size:28px; font-weight:800; color:var(--text)">Data entry → Review and sign-off</div>
+        </div>
+        <div class="divider"></div>
+        <div>
+          <div style="font-size:11px; color:var(--accent); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px">Additional cost</div>
+          <div style="font-size:28px; font-weight:800; color:var(--green)">None (uses existing plan)</div>
+        </div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- NAVIGATION -->
+<div class="nav">
+  <button id="prev" onclick="go(-1)" disabled>←</button>
+  <div class="progress-dots" id="dots"></div>
+  <div class="slide-counter" id="counter">1 / 11</div>
+  <button id="next" onclick="go(1)">→</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsEl = document.getElementById('dots');
+  const counterEl = document.getElementById('counter');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+  let current = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n) {
+    if (n < 0 || n >= slides.length) return;
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit');
+    setTimeout(() => slides[current].classList.remove('exit'), 350);
+    dotsEl.children[current].classList.remove('active');
+    dotsEl.children[current].classList.add('visited');
+    current = n;
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.remove('visited');
+    dotsEl.children[current].classList.add('active');
+    counterEl.textContent = (current + 1) + ' / ' + slides.length;
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === slides.length - 1;
+  }
+
+  function go(dir) { goTo(current + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>

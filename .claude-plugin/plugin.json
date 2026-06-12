@@ -1,6 +1,6 @@
 {
-  "name": "work-equipment-sop",
-  "description": "Skills for the Work Equipment repair task database workflow — PDF transcription with auto-OCR and split, sub-assembly breakdown with Repair Task ID generation, and symptom classification with Symptom ID generation.",
+  "name": "parts-manual-extractor",
+  "description": "Extract structured parts data from scanned equipment manuals. Automates PDF transcription, sub-assembly breakdown, and repair task ID generation into Excel.",
   "version": "1.0.0",
   "author": {
     "name": "Cassia Yue"

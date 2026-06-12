@@ -1,0 +1,16 @@
+# Output files
+output/*.xlsx
+output/*.csv
+output/~$*
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Temp / editor
+*.tmp
+*.swp
