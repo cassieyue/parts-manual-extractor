@@ -1,5 +1,7 @@
 # Work Equipment Repair Tasks — Automation Approach Evaluation
 
+> **Co-op project** — digital solutions co-op at Keolis, which operates and maintains several railway lines for the MBTA.
+
 ## Scenario
 
 Extract structured parts data from scanned railway work equipment parts manuals (PDF) into a formatted Excel workbook for upload to Trapeze (maintenance management system). Each manual contains a mix of diagram pages and two-column parts table pages. Output must conform to a fixed schema with ten columns per row.
